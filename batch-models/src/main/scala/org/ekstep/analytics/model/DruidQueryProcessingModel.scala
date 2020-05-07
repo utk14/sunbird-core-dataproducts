@@ -82,7 +82,7 @@ object DruidQueryProcessingModel extends IBatchModelTemplate[DruidOutput, DruidO
       interval.staticInterval.get
     } else if (interval.interval.nonEmpty) {
       val dateRange = interval.interval.get
-      dateRange.startDate + "/" + dateRange.endDate
+      dateRange.startDate  + "T05:30:00+00:00" + "/" + dateRange.endDate + "T05:30:00+00:00"
     } else {
       throw new DruidConfigException("Both staticInterval and interval cannot be missing. Either of them should be specified")
     }
@@ -105,7 +105,6 @@ object DruidQueryProcessingModel extends IBatchModelTemplate[DruidOutput, DruidO
   }
 
   override def postProcess(data: RDD[DruidOutput], config: Map[String, AnyRef])(implicit sc: SparkContext, fc: FrameworkContext): RDD[DruidOutput] = {
-
     if (data.count() > 0) {
       val configMap = config("reportConfig").asInstanceOf[Map[String, AnyRef]]
       val reportConfig = JSONUtils.deserialize[ReportConfig](JSONUtils.serialize(configMap))
@@ -166,12 +165,8 @@ object DruidQueryProcessingModel extends IBatchModelTemplate[DruidOutput, DruidO
       val mergeConf = reportMergeConfig.get
       val reportPath = mergeConf.reportPath
       val filesList = deltaFiles.map{f =>
-        if(dims.size == 1 && dims.contains("Date")) {
-          Map("reportPath" -> (reportPath), "deltaPath" -> f.substring(f.indexOf(storageConfig.fileName, 0)))
-        } else {
-          val reportPrefix = f.substring(0, f.lastIndexOf("/")).split(reportId)(1)
-          Map("reportPath" -> (reportPrefix + "/" + reportPath), "deltaPath" -> f.substring(f.indexOf(storageConfig.fileName, 0)))
-        }
+        val reportPrefix = f.substring(0, f.lastIndexOf("/")).split(reportId)(1)
+        Map("reportPath" -> (reportPrefix + "/" + reportPath), "deltaPath" -> f.substring(f.indexOf(storageConfig.fileName, 0)))
  }
 
       val mergeScriptConfig = MergeScriptConfig(reportId, mergeConf.frequency, mergeConf.basePath, mergeConf.rollup,
